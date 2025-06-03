@@ -41,7 +41,7 @@ class PrometheusSensorAccessory {
           break;
         case 'humidity':
             // create a new humidity Sensor service
-            this.service = new this.api.hap.ServiceHumiditySensor(this.name);
+            this.service = new this.api.hap.Service.HumiditySensor(this.name);
             this.service.getCharacteristic(this.Characteristic.CurrentRelativeHumidity)
               .onGet(this.handleCurrentHumidityGet.bind(this));
             this.services.push(this.service);
