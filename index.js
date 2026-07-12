@@ -263,12 +263,30 @@ class PrometheusSensorAccessory {
     });
   }
 
-  queryPrometheus(query) {
+  async queryPrometheus(query, retries = 3, delay = 1000) {
     let url = this.url + "/api/v1/query?query=" + query;
-    const response = axios.get(url)
-    return response.then((response) => {
-      return response.data["data"]["result"][0]["value"][1];
-    })
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await axios.get(url, { timeout: 5000 });
+        return response.data["data"]["result"][0]["value"][1];
+      } catch (error) {
+        const isLastAttempt = attempt === retries;
+        const isRetryableError = error.code === 'ECONNREFUSED' || 
+                                  error.code === 'ENOTFOUND' || 
+                                  error.code === 'ETIMEDOUT' ||
+                                  error.code === 'ECONNRESET' ||
+                                  (error.response && error.response.status >= 500);
+        
+        if (isLastAttempt || !isRetryableError) {
+          throw error;
+        }
+        
+        this.log.warn(`Prometheus query attempt ${attempt}/${retries} failed: ${error.message}. Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Exponential backoff
+      }
+    }
   }
 
   getServices() {
